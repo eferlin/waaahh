@@ -1,0 +1,30 @@
+name: Helm CI
+
+# Quando o workflow será executado
+on:
+  push:
+    branches: [ eferlin ]
+  pull_request:
+    branches: [ eferlin ]
+
+jobs:
+  helm-lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      # Faz checkout do código do repositório
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Configura o Helm
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.12.0' # Use a versão do Helm que você prefere
+
+      # Valida o chart Helm (linting)
+      - name: Helm Lint
+        run: helm lint ./
+
+      # (Opcional) Testa a renderização dos templates
+      - name: Helm Template
+        run: helm template ./ > rendered.yaml && cat rendered.yaml
