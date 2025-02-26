@@ -1,0 +1,144 @@
+# ---------------------------------------
+# Configuração Geral do Helm Chart
+# Define o namespace e o ambiente onde o Helm será implantado
+# ---------------------------------------
+namespace: ixc
+environment: ixc
+# ---------------------------------------
+# Configuração do ReplicaSet e da Imagem do Container
+# ---------------------------------------
+replicaCount: 3
+image:
+  repository: odevopeiro/backend
+  pullPolicy: Always
+  tag: "back-v9"
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+# ---------------------------------------
+# Configuração do ServiceAccount (Papel no Kubernetes)
+# ---------------------------------------
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}  
+  name: "gitlab-sa"
+# ---------------------------------------
+# Configuração de Anotações e Rótulos do Pod
+# ---------------------------------------
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+# ---------------------------------------
+# Configuração do Serviço (Service)
+# Define como os pods do backend e MySQL serão expostos na rede do Kubernetes
+# ---------------------------------------
+service:
+  backend:
+    type: ClusterIP
+    port: 8080
+    
+  mysql:
+    type: ClusterIP
+    port: 3306
+    targetPort: 3306
+# ---------------------------------------
+# Configuração do Ingress (Caso Use)
+# ---------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+# ---------------------------------------
+# Configuração do Backend
+# ---------------------------------------
+backend:
+  containerPort: 80
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "300m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  db:
+    secretName: mysql-secret
+    port: 3306
+  timezone: "America/Sao_Paulo"
+  terminationGracePeriodSeconds: 60
+# ---------------------------------------
+# Configuração do Banco de Dados (MySQL)
+# ---------------------------------------
+mysql:
+  replicaCount: 1
+  image:
+    repository: mysql
+    tag: "5.7"
+    pullPolicy: IfNotPresent
+  containerPort: 3306
+  secretName: mysql-secret
+  database: mydatabase
+  livenessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 20
+    periodSeconds: 5
+  persistence:
+    enabled: true
+    existingClaim: mysql-pvc-ixc
+  initConfigMap: init-sql
+  # ---------------------------------------
+  # Configuração dos Segredos (Secrets)
+  # Contém credenciais e informações sensíveis do MySQL
+  # ---------------------------------------
+  secrets:
+    rootPassword: "cEBzc3cwcmQhQCM="  # Senha do usuário root do MySQL em Base64
+    host: "bXlzcWwtc2VydmljZQ=="      # Nome do serviço MySQL em Base64
+    database: "bXlkYXRhYmFzZQ=="      # Nome do banco de dados em Base64
+    user: "ZmVybGlu"                 # Nome de usuário para conexão em Base64
+    password: "cEBzc3cwcmQhQCM="      # Senha do usuário padrão em Base64
+  # ---------------------------------------
+  # Configuração das Tabelas do Banco de Dados (Usado no init.sql)
+  # Permite modificar os nomes via Helm sem mexer diretamente no código SQL
+  # ---------------------------------------
+  tables:
+    login: "login"
+    products: "products"
+# ---------------------------------------
+# Configuração do Autoscaling (HPA)
+# ---------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+# ---------------------------------------
+# Configuração de Volumes e Persistência de Dados
+# ---------------------------------------
+persistence:
+  enabled: true
+  size: 5Gi
+  accessMode: ReadWriteOnce
+  reclaimPolicy: Retain
+  storageClass: manual
+  hostPath: "/mnt/data/mysql/ixc"
+volumes: []
+volumeMounts: []
+# ---------------------------------------
+# Configuração de Afinidade, Tolerâncias e Seleção de Nó
+# ---------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}

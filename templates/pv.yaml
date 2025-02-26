@@ -1,0 +1,19 @@
+{{- if .Values.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name | default "helm-kubernetes" }}-mysql-pv
+  namespace: {{ .Values.namespace | default "default"}}
+  annotations:
+    helm.sh/hook-weight: "-5"
+spec:
+  capacity:
+    storage: {{ .Values.persistence.size }}
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  persistentVolumeReclaimPolicy: {{ .Values.persistence.reclaimPolicy | default "Retain" }}
+  storageClassName: {{ .Values.persistence.storageClass | default "standard" }}
+  hostPath:
+    path: "{{ .Values.persistence.hostPath }}"
+{{- end }}

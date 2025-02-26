@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-init-sql
+  namespace: {{ .Values.namespace }}
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS `{{ .Values.mysql.database }}`;
+    USE `{{ .Values.mysql.database }}`;
+
+    CREATE USER IF NOT EXISTS '{{ .Values.mysql.secrets.user }}'@'%' 
+    IDENTIFIED BY '{{ .Values.mysql.secrets.password }}';
+
+    GRANT ALL PRIVILEGES ON `{{ .Values.mysql.database }}`.* TO '{{ .Values.mysql.secrets.user }}'@'%';
+    FLUSH PRIVILEGES;
+
+    CREATE TABLE IF NOT EXISTS `{{ .Values.mysql.tables.login }}` (
+        `id` int(9) NOT NULL AUTO_INCREMENT,
+        `name` varchar(100) NOT NULL,
+        `email` varchar(100) NOT NULL,
+        `username` varchar(100) NOT NULL,
+        `password` varchar(100) NOT NULL,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB;
+
+    CREATE TABLE IF NOT EXISTS `{{ .Values.mysql.tables.products }}` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `name` varchar(100) NOT NULL,
+        `qty` int(5) NOT NULL,
+        `price` decimal(10,2) NOT NULL,
+        `login_id` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        CONSTRAINT FK_products_1 FOREIGN KEY (login_id) 
+        REFERENCES {{ .Values.mysql.tables.login }}(id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+    ) ENGINE=InnoDB;

@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Release.Name }}-prepare-storage
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: prepare-storage
+  template:
+    metadata:
+      labels:
+        app: prepare-storage
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: prepare-storage
+          image: busybox
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p {{ .Values.persistence.hostPath }} && chmod -R 777 {{ .Values.persistence.hostPath }}
+              echo "Storage preparado: {{ .Values.persistence.hostPath }}"
+              sleep 10
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-mnt
+              mountPath: /mnt
+      volumes:
+        - name: host-mnt
+          hostPath:
+            path: /mnt

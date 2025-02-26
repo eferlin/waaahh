@@ -1,0 +1,120 @@
+# ---------------------------------------
+# Configuração Geral do Helm Chart
+# Define o namespace e o ambiente onde o Helm será implantado
+# ---------------------------------------
+namespace: ixc
+environment: ixc
+
+# ---------------------------------------
+# Configuração do Backend (Aplicação Principal)
+# Inclui réplicas, imagem Docker, portas, variáveis e recursos do backend
+# ---------------------------------------
+backend:
+  replicaCount: 3
+
+  image:
+    repository: odevopeiro/backend    # Imagem do backend (Docker)
+    tag: "back-v9"                    # Versão/tag da imagem
+    pullPolicy: Always                # Política de pull da imagem
+
+  containerPort: 80  # Porta que o backend expõe dentro do container
+
+  rollingUpdate:
+    maxSurge: 1       # Controle de atualização: Permite 1 novo pod subir antes do antigo ser removido
+    maxUnavailable: 0  # Controle de atualização: Nenhum pod ficará indisponível durante o update
+
+  resources:
+    requests:
+      memory: "256Mi"  # Mínimo de memória solicitado
+      cpu: "300m"      # Mínimo de CPU solicitado
+    limits:
+      memory: "512Mi"  # Memória máxima permitida
+      cpu: "500m"      # CPU máxima permitida
+
+  db:
+    secretName: mysql-secret  # Nome do Secret que contém credenciais do banco de dados
+    port: 3306                # Porta do MySQL utilizada pelo backend
+
+  timezone: "America/Sao_Paulo"  # Timezone da aplicação
+
+  terminationGracePeriodSeconds: 60  # Tempo de espera antes de forçar o encerramento do pod
+
+# ---------------------------------------
+# Configuração do Banco de Dados (MySQL)
+# Inclui imagem, réplicas, volumes persistentes, configuração de saúde e secrets
+# ---------------------------------------
+mysql:
+  replicaCount: 1    # Número de réplicas do banco de dados
+
+  image:
+    repository: mysql         # Imagem do MySQL
+    tag: "5.7"               # Versão do MySQL utilizada
+    pullPolicy: IfNotPresent  # Política de pull da imagem
+
+  containerPort: 3306        # Porta do container para o MySQL
+  secretName: mysql-secret   # Nome do Secret contendo as credenciais do MySQL
+  database: mydatabase       # Nome do banco de dados a ser criado
+
+  # Configuração de saúde do Banco de Dados (Liveness Probe)
+  livenessProbe:
+    initialDelaySeconds: 60  # Tempo antes da primeira verificação de "Está rodando?"
+    periodSeconds: 10        # Intervalo entre as verificações
+
+  # Configuração de prontidão do Banco de Dados (Readiness Probe)
+  readinessProbe:
+    initialDelaySeconds: 20  # Tempo antes da primeira verificação de "Está pronto?"
+    periodSeconds: 5         # Intervalo entre as verificações
+
+  # Configuração de Persistência (Armazenamento de Dados)
+  persistence:
+    enabled: true                # Se "true", o MySQL usará um Persistent Volume (PVC)
+    existingClaim: mysql-pvc-ixc  # Nome do PVC existente para o MySQL armazenar seus dados
+
+  initConfigMap: init-sql  # Nome do ConfigMap contendo o script de inicialização do banco
+
+  # ---------------------------------------
+  # Configuração dos Segredos (Secrets)
+  # Contém credenciais do banco de dados em Base64
+  # ---------------------------------------
+  secrets:
+    rootPassword: "cEBzc3cwcmQhQCM="  # Senha do usuário root do MySQL em Base64
+    host: "bXlzcWwtc2VydmljZQ=="      # Nome do serviço MySQL em Base64
+    database: "bXlkYXRhYmFzZQ=="      # Nome do banco de dados em Base64
+    user: "ZmVybGlu"                 # Nome de usuário para conexão em Base64
+    password: "cEBzc3cwcmQhQCM="      # Senha do usuário padrão em Base64
+
+# ---------------------------------------
+# Configuração do Serviço (Service)
+# Define como os pods do backend e MySQL serão expostos na rede do Kubernetes
+# ---------------------------------------
+service:
+  backend:
+    type: ClusterIP  # Tipo de serviço: ClusterIP, NodePort, ou LoadBalancer
+    port: 8080       # Porta onde o backend será exposto internamente no cluster
+
+  mysql:
+    type: ClusterIP  # Tipo de serviço para expor o banco de dados
+    port: 3306       # Porta em que o serviço do MySQL estará acessível
+    targetPort: 3306 # Porta interna do container onde o MySQL está rodando
+
+    # ---------------------------------------
+    # Persistent Volume
+    # ---------------------------------------
+
+    persistence:
+      enabled: true               # Se "true", o PV será criado pelo Helm
+      size: 5Gi                   # Tamanho do volume persistente
+      accessMode: ReadWriteOnce    # Define se o volume pode ser montado por um ou mais nós
+      reclaimPolicy: Retain        # O que fazer com o PV após o PVC ser deletado (Retain, Delete, Recycle)
+      storageClass: manual         # Nome da StorageClass usada para o PV
+      hostPath: "/mnt/data/mysql/ixc"  # Caminho onde os dados do MySQL serão armazenados no nó do Kubernetes
+
+      # ---------------------------------------
+      # Persistent Volume Claim
+      # ---------------------------------------
+
+      persistence:
+        enabled: true               # Se "true", o PVC será criado pelo Helm
+        size: 5Gi                   # Tamanho do volume persistente
+        accessMode: ReadWriteOnce    # Definição do modo de acesso ao PV (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)
+        storageClass: manual         # Nome da StorageClass associada ao PVC
